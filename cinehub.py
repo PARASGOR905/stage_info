@@ -37,7 +37,7 @@ import time
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     ConversationHandler, filters, ContextTypes
@@ -1384,6 +1384,18 @@ async def cmd_gdrive(u: Update, c: ContextTypes.DEFAULT_TYPE):
 #  MAIN
 # ============================================================
 
+async def post_init(application: Application) -> None:
+    commands = [
+        BotCommand("start", "Start the bot & show info"),
+        BotCommand("help", "Show download instructions"),
+        BotCommand("premium", "View premium subscription plans"),
+        BotCommand("me", "View your account status"),
+        BotCommand("login", "Login to Stage.in using your phone number"),
+        BotCommand("downloads", "List local downloads (Admin)"),
+        BotCommand("gdrive", "Upload local files to Drive (Admin)"),
+    ]
+    await application.bot.set_my_commands(commands)
+
 def main():
     if BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
         print("\n  CineHub — Set your bot token:\n")
@@ -1405,6 +1417,7 @@ def main():
            .token(BOT_TOKEN)
            .read_timeout(30)
            .write_timeout(30)
+           .post_init(post_init)
            .build())
 
     app.add_handler(ConversationHandler(
