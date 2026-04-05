@@ -282,7 +282,7 @@ async def scrape_stage(url: str) -> tuple[str | None, dict | None, str | None]:
     """Returns (m3u8_url, metadata_dict, error_string) for Stage.in."""
     session = load_session("stage")
     if not session:
-        return None, None, "No session. Use /login or /login_manual first."
+        return None, None, "No session. Use /login or import cookies first."
 
     BLOCK_TYPES = {"image", "stylesheet", "font", "media"}
     master = None
@@ -1022,7 +1022,7 @@ async def login_otp(u: Update, c: ContextTypes.DEFAULT_TYPE):
     state, err = await run_login_otp(otp, prev)
 
     if err:
-        await msg.edit_text(f"❌ Verification failed: {err[:100]}\nTry /login_manual")
+        await msg.edit_text(f"❌ Verification failed: {err[:100]}\nTry importing your session cookies manually.")
         return ConversationHandler.END
 
     save_session(state, "stage")
@@ -1035,27 +1035,7 @@ async def login_cancel(u: Update, c: ContextTypes.DEFAULT_TYPE):
     await u.message.reply_text("❌ Cancelled.")
     return ConversationHandler.END
 
-async def cmd_login_manual(u: Update, c: ContextTypes.DEFAULT_TYPE):
-    await u.message.reply_text(
-        "🔧 *Manual Session Import*\n\n"
-        "Run this on your PC (logged into Brave):\n"
-        "```python\n"
-        "from playwright.sync_api import sync_playwright\n"
-        "import json, os\n"
-        "with sync_playwright() as p:\n"
-        "  b=p.chromium.launch_persistent_context(\n"
-        "    user_data_dir=os.path.expandvars(r'%LOCALAPPDATA%\\\\BraveSoftware\\\\Brave-Browser\\\\User Data'),\n"
-        "    executable_path=r'C:\\\\Program Files\\\\BraveSoftware\\\\Brave-Browser\\\\Application\\\\brave.exe',\n"
-        "    headless=False)\n"
-        "  b.pages[0].goto('https://www.stage.in')\n"
-        "  input('Press Enter after page loads...')\n"
-        "  print(json.dumps(b.storage_state()))\n"
-        "  b.close()\n"
-        "```\n"
-        "Then paste the JSON here.\n\n"
-        "⚠️ *The bot will automatically process Stage.in cookies from your imported session.*",
-        parse_mode="Markdown",
-    )
+
 
 # --- URL HANDLER ---
 async def handle_message(u: Update, c: ContextTypes.DEFAULT_TYPE):
@@ -1439,7 +1419,6 @@ def main():
     app.add_handler(CommandHandler("premium", cmd_premium))
     app.add_handler(CommandHandler("me", cmd_me))
     app.add_handler(CommandHandler("downloads", cmd_downloads))
-    app.add_handler(CommandHandler("login_manual", cmd_login_manual))
     app.add_handler(CommandHandler("gdrive", cmd_gdrive))
     
     # Admin commands
