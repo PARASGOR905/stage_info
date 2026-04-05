@@ -723,7 +723,7 @@ async def cmd_start(u: Update, c: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
         "🌟 *CineHub VIP Concierge* 🌟\n"
         "Welcome to the ultimate entertainment hub! 🎬\n\n"
-        "I am your dedicated assistant for high-speed, high-definition content from *Stage.in* and *JoJo App*. Experience your favorite stories like never before. 👑\n\n"
+        "I am your dedicated assistant for high-speed, high-definition content from *Stage.in*. Experience your favorite stories like never before. 👑\n\n"
         "💎 *Why CineHub is the Gold Standard:*\n\n"
         "📺 *Cinematic Visuals:* Unlock breathtaking 4K and Ultra HD resolution for the big-screen experience.\n"
         "☁️ *Cloud Convenience:* Your files delivered instantly to Google Drive—access anywhere, anytime!\n"
@@ -751,7 +751,7 @@ async def cmd_help(u: Update, c: ContextTypes.DEFAULT_TYPE):
     help_text = (
         "🌟 *Welcome to the CineHub VIP Experience* 🌟\n\n"
         "Getting high-quality content has never been easier. Follow these three simple steps to start your journey:\n\n"
-        "1️⃣ **Copy** a link from Stage.in or JoJoApp. 🔗\n"
+        "1️⃣ **Copy** a link from Stage.in. 🔗\n"
         "2️⃣ **Paste** it right here in this chat. 📥\n"
         "3️⃣ **Select** your desired quality and wait for your Google Drive link! ✅\n\n"
         "💎 *Elevate your experience by unlocking 4K, Studio Audio, and Lightning-Fast processing with our Premium plans.*"
@@ -1047,13 +1047,13 @@ async def cmd_login_manual(u: Update, c: ContextTypes.DEFAULT_TYPE):
         "    user_data_dir=os.path.expandvars(r'%LOCALAPPDATA%\\\\BraveSoftware\\\\Brave-Browser\\\\User Data'),\n"
         "    executable_path=r'C:\\\\Program Files\\\\BraveSoftware\\\\Brave-Browser\\\\Application\\\\brave.exe',\n"
         "    headless=False)\n"
-        "  b.pages[0].goto('https://www.stage.in') # OR https://jojoapp.in\n"
+        "  b.pages[0].goto('https://www.stage.in')\n"
         "  input('Press Enter after page loads...')\n"
         "  print(json.dumps(b.storage_state()))\n"
         "  b.close()\n"
         "```\n"
         "Then paste the JSON here.\n\n"
-        "⚠️ *The bot will automatically detect if it's a Stage.in or JoJoApp session based on the domains in cookies.*",
+        "⚠️ *The bot will automatically process Stage.in cookies from your imported session.*",
         parse_mode="Markdown",
     )
 
@@ -1081,7 +1081,7 @@ async def handle_message(u: Update, c: ContextTypes.DEFAULT_TYPE):
                     await u.message.reply_text(f"✅ Session imported for *{platform.capitalize()}*!", parse_mode="Markdown")
                     processed = True
         except: pass
-    elif "stage.in" in text or "jojoapp.in" in text:
+    elif "stage.in" in text:
         # Try parsing as Netscape format if keywords are present
         cookies = parse_netscape_cookies(text)
         if cookies:
@@ -1361,7 +1361,7 @@ async def handle_document(u: Update, c: ContextTypes.DEFAULT_TYPE):
         if platform:
             await msg.edit_text(f"✅ *Cookie Import Successful!*\n\nPlatform: `{platform.capitalize()}`\nCookies: `{len(cookies)}` imported.", parse_mode="Markdown")
         else:
-            await msg.edit_text("❌ *Import Failed*\nNo valid cookies for Stage.in or JoJoApp found in this file.", parse_mode="Markdown")
+            await msg.edit_text("❌ *Import Failed*\nNo valid cookies for Stage.in found in this file.", parse_mode="Markdown")
             
     except Exception as e:
         log.error(f"Handle document error: {e}")
@@ -1417,7 +1417,6 @@ def main():
     print("╚═══════════════════════════════════════╝")
     print(f"  Downloads : {DOWNLOAD_DIR}")
     print(f"  Stage.in  : {'✅ Active' if has_session('stage') else '❌ /login needed'}")
-    print(f"  JoJo App  : {'✅ Active' if has_session('jojo') else '⚠️ /login_manual needed'}")
     print(f"  rclone    : {'✅ ' + RCLONE_REMOTE + ': ready' if rclone_is_ready() else '⚠️ run: rclone config'}")
     print(f"  Starting...\n")
 
