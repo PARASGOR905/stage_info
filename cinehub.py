@@ -721,19 +721,19 @@ def auth(uid):
 
 async def cmd_start(u: Update, c: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
-        "🌟 *CineHub VIP Concierge* 🌟\n"
+        "🌟 *Stage.in Premium Downloader* 🌟\n"
         "Welcome to the ultimate entertainment hub! 🎬\n\n"
-        "I am your dedicated assistant for high-speed, high-definition content from *Stage.in*. Experience your favorite stories like never before. 👑\n\n"
-        "💎 *Why CineHub is the Gold Standard:*\n\n"
-        "📺 *Cinematic Visuals:* Unlock breathtaking 4K and Ultra HD resolution for the big-screen experience.\n"
-        "☁️ *Cloud Convenience:* Your files delivered instantly to Google Drive—access anywhere, anytime!\n"
-        "🎵 *Studio Sound:* Extract pure, high-fidelity Audio Tracks for your personal playlist.\n"
+        "I am your dedicated assistant for high-speed, high-definition regional content from *Stage.in*. Experience your favorite stories like never before. 👑\n\n"
+        "💎 *Why Choose Us:*\n"
+        "📺 *Cinematic Visuals:* Unlock breathtaking 1080p and 4K resolutions.\n"
+        "☁️ *Cloud Convenience:* Your files delivered instantly to Google Drive.\n"
+        "🎵 *Studio Sound:* Extract pure Audio Tracks for your personal playlist.\n"
         "⚡ *Zero Friction:* No ads, no waiting, just Lightning-Fast Processing.\n\n"
-        "🚀 *Start Your Journey:*\n"
-        "1️⃣ **Copy** a link from your preferred app. 🔗\n"
-        "2️⃣ **Paste** it right here in the chat. 📥\n"
+        "🚀 *How to use:*\n"
+        "1️⃣ **Copy** a movie or web-series link strictly from Stage.in. 🔗\n"
+        "2️⃣ **Paste** it right here in this chat. 📥\n"
         "3️⃣ **Select** your quality and let me handle the rest! ✅\n\n"
-        "✨ *Ready for the VIP Treatment? Type /premium to unlock the full power of CineHub!* 💎"
+        "✨ *Ready for the VIP Treatment? Type /premium to unlock all features!* 💎"
     )
     
     kb = [
@@ -749,12 +749,13 @@ async def cmd_start(u: Update, c: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_help(u: Update, c: ContextTypes.DEFAULT_TYPE):
     help_text = (
-        "🌟 *Welcome to the CineHub VIP Experience* 🌟\n\n"
-        "Getting high-quality content has never been easier. Follow these three simple steps to start your journey:\n\n"
-        "1️⃣ **Copy** a link from Stage.in. 🔗\n"
-        "2️⃣ **Paste** it right here in this chat. 📥\n"
-        "3️⃣ **Select** your desired quality and wait for your Google Drive link! ✅\n\n"
-        "💎 *Elevate your experience by unlocking 4K, Studio Audio, and Lightning-Fast processing with our Premium plans.*"
+        "🌟 *How to use Stage.in Downloader* 🌟\n\n"
+        "Getting high-quality regional content is simple. Just follow these steps:\n\n"
+        "1️⃣ **Copy** a link from the Stage.in app or website. 🔗\n"
+        "2️⃣ **Paste** it directly into this chat. 📥\n"
+        "3️⃣ **Pick** your desired video quality, or choose Audio-Only! ✅\n\n"
+        "The bot will securely upload the file to Google Drive and provide a fast, direct download link.\n\n"
+        "💎 *Tap /premium to view our exclusive plans!*"
     )
     
     kb = [[InlineKeyboardButton("📢 Join Updates Channel", url="https://t.me/CineHub_Rips")]]
