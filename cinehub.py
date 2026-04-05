@@ -1084,12 +1084,41 @@ async def handle_message(u: Update, c: ContextTypes.DEFAULT_TYPE):
 
     url = text
     name = "video"
-    if "/watch/" not in url:
-        url = re.sub(r"/(movie|show|episode)/(.+)$", r"/\1/watch/\2", url)
+    batch_urls = []
+    
+    batch_match = re.search(r"/(\d+)-(\d+)$", url)
+    cust_match = re.search(r"/(\d+)-(\d+)-(\d+)$", url)
+    
+    start_ep, end_ep, season, base_url = 0, 0, 1, ""
+    if cust_match:
+        season, start_ep, end_ep = int(cust_match.group(1)), int(cust_match.group(2)), int(cust_match.group(3))
+        base_url = url[:cust_match.start()]
+    elif batch_match:
+        start_ep, end_ep = int(batch_match.group(1)), int(batch_match.group(2))
+        base_url = url[:batch_match.start()]
+        
+    if base_url:
+        if end_ep < start_ep or end_ep - start_ep > 30:
+            await u.message.reply_text("❌ Invalid range or limit exceeded (30 max).")
+            return
+        for i in range(start_ep, end_ep + 1):
+            ep_url = f"{base_url}/{i}"
+            if "/watch/" not in ep_url:
+                ep_url = re.sub(r"/(movie|show|episode)/(.+)$", r"//watch/", ep_url)
+            batch_urls.append((ep_url, season, i))
+        url = batch_urls[0][0]
+    else:
+        if "/watch/" not in url:
+            url = re.sub(r"/(movie|show|episode)/(.+)$", r"//watch/", url)
+        batch_urls = [(url, 1, 1)]
+        
     m = re.search(r"/watch/([^?]+)", url)
     name = re.sub(r"[^\w\-]", "_", m.group(1)) if m else "stage_video"
+    
+    c.user_data["batch_urls"] = batch_urls
 
-    msg = await u.message.reply_text(f"🎬 *{name}*\n\n🔍 Scraping qualities from *Stage.in*...", parse_mode="Markdown")
+    batch_str = f"\n📦 *Batch Mode:* {len(batch_urls)} Episodes" if len(batch_urls) > 1 else ""
+    msg = await u.message.reply_text(f"🎬 *{name}*{batch_str}\n\n🔍 Scraping qualities from *Stage.in*...", parse_mode="Markdown")
     try:
         m3u8, meta, err = await scrape_stage(url)
     except Exception as e:
@@ -1176,125 +1205,118 @@ async def handle_message(u: Update, c: ContextTypes.DEFAULT_TYPE):
 async def cb_quality(u: Update, c: ContextTypes.DEFAULT_TYPE):
     q = u.callback_query
     await q.answer()
-    if q.data == "q_cancel":
-        if q.message.photo:
-            await q.edit_message_caption("❌ Cancelled.")
-        else:
-            await q.edit_message_text("❌ Cancelled.")
-        return
     
-    if q.data == "show_plans" or q.data == "q_premium_info":
-        # Redirect to premium prices message
-        await cmd_premium(u, c)
+    batch_urls = c.user_data.get("batch_urls")
+    qi = q.data.replace("q_", "")
+    is_audio = (qi == "audio")
+    
+    if not batch_urls:
+        await q.message.edit_text("❌ Task expired. Send the link again.")
         return
-
-    qi = int(q.data.split("_")[1])
-    url = c.user_data.get("url")
-    name = c.user_data.get("name", "video")
-    m3u8 = c.user_data.get("m3u8")
-    meta = c.user_data.get("meta")
-    streams = c.user_data.get("streams")
-    is_audio = (qi == 99)
-
-    if not m3u8 or not streams:
-        await q.edit_message_text("❌ Session expired. Send the URL again.")
-        return
-
-    if is_audio:
-        if not is_premium(u.effective_user.id):
-            await q.edit_message_text("❌ *Quality Locked*\n\nAudio-only extraction is a Premium feature. Use /premium to upgrade.", parse_mode="Markdown")
-            return
-        qlabel = "Audio Only"
-    else:
-        sel = streams[min(qi, len(streams) - 1)]
-        res_text = res_to_label(sel["res"])
-        res_val = int(res_text.replace('p', '')) if 'p' in res_text else 0
-        if res_val > 720 and not is_premium(u.effective_user.id):
-            await q.edit_message_text(f"❌ *Quality Locked ({res_text})*\n\nHigh-resolution downloads are a Premium feature. Use /premium to upgrade.", parse_mode="Markdown")
-            return
-        qlabel = res_text
-
-    c.user_data["qi"] = qi
-    c.user_data["qlabel"] = qlabel
-
-    # Start the processing immediately for Google Drive
-    asyncio.create_task(process_and_upload(u, c, m3u8, name, qi, meta, qlabel))
-
-async def process_and_upload(u: Update, c: ContextTypes.DEFAULT_TYPE, m3u8: str, name: str, qi: int, meta: dict, qlabel: str):
-    q = u.callback_query
-    loop = asyncio.get_event_loop()
-    display = meta.get("title", name) if meta else name
-    is_audio = (qi == 99)
-
-    async def safe_edit(text):
+        
+    total = len(batch_urls)
+    
+    for idx, item in enumerate(batch_urls, 1):
+        if isinstance(item, tuple) and len(item) == 3:
+            b_url, season, ep_num = item
+        else:
+            b_url, season, ep_num = getattr(item, 'url', item), 1, idx
+            
+        m = re.search(r"/watch/([^?]+)", b_url)
+        name = re.sub(r"[^\w\-]", "_", m.group(1)) if m else f"stage_video_ep{idx}"
+        
+        batch_prefix = f"📦 *[{idx}/{total}]* " if total > 1 else ""
+        await q.message.edit_text(f"{batch_prefix}🎬 *{name}*\n🔍 Scraping playlist...", parse_mode="Markdown")
+        
         try:
-            if q.message.photo:
-                await q.edit_message_caption(caption=text, parse_mode="Markdown")
-            else:
-                await q.edit_message_text(text=text, parse_mode="Markdown")
-        except: pass
+            m3u8, meta, err = await scrape_stage(b_url)
+        except Exception as e:
+            await q.message.reply_text(f"{batch_prefix}❌ Scraper error: {str(e)[:100]}")
+            continue
 
-    await safe_edit(f"🎬 *{display}*\n\n⏬ Starting download...")
+        if not m3u8:
+            await q.message.reply_text(f"{batch_prefix}❌ Failed: {err}")
+            continue
+            
+        res = "Audio Only" if is_audio else f"{qi}p"
+        
+        display = meta.get("title", name)
+        if total > 1:
+            display = re.sub(r"\s*\|\s*Episode\s*\d+", "", display, flags=re.IGNORECASE).strip()
+            display = f"{display} S{season:02d}E{ep_num:02d}"
+        
+        meta["title"] = display  # Enforce this title for the output filename inside download_hls
 
-    last = [time.time(), ""]
-    async def cb(kind, txt):
-        if time.time() - last[0] > 4 and txt != last[1]:
-            last[0], last[1] = time.time(), txt
+        await q.message.edit_text(f"{batch_prefix}🎬 *{display}*\n⏳ Starting download: *{res}*...", parse_mode="Markdown")
+
+        last = [time.time(), ""]
+        async def safe_edit(txt):
             try:
-                await safe_edit(f"🎬 *{display}*\n\n{txt}")
+                await q.message.edit_text(txt, parse_mode="Markdown", disable_web_page_preview=True)
             except: pass
 
-    try:
-        if is_audio:
-            result = await download_audio_only(m3u8, name, cb, meta)
-        else:
-            result = await download_hls(m3u8, name, qi, cb, meta)
-    except Exception as e:
-        await safe_edit(f"❌ Download error: {str(e)[:200]}")
-        return
-
-    if not result:
-        await safe_edit("❌ Download failed. Try again.")
-        return
-
-    path, filename, res, size = result
-    mb = size / 1048576
-    ext = os.path.splitext(path)[1]
-    poster_url = meta.get("poster", "")
-
-    if rclone_is_ready():
-        await safe_edit(f"☁️ *Uploading to Google Drive* ({mb:.0f} MB)...")
-        async def gd_progress(pct, speed=""):
-            await safe_edit(f"☁️ *Drive Upload*\n\n{progress_bar(pct)}\n💾 *{mb:.0f} MB*{speed}")
-        
-        link = await rclone_upload(path, f"{filename}{ext}", gd_progress)
-        if link:
-            cap_info = f"├ ℹ️ *Info:* {meta.get('info')}\n" if meta.get("info") else ""
-            caption = (
-                f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"   ✅ *UPLOAD COMPLETE*\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"🎬 *{display}*\n\n"
-                f"{cap_info}"
-                f"├ 📊 *Quality:* {res}\n"
-                f"├ 💾 *Size:* {mb:.0f} MB\n"
-                f"├ 📁 *File:* `{filename}{ext}`\n"
-                f"╰ ☁️ *Drive:* [Open Link]({link})\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"_Powered by CineHub_ ⚡")
-            if poster_url:
+        async def cb(kind, txt):
+            if time.time() - last[0] > 4 and txt != last[1]:
+                last[0], last[1] = time.time(), txt
                 try:
-                    await q.message.reply_photo(photo=poster_url, caption=caption, parse_mode="Markdown")
-                    await safe_edit(f"✅ *{display}* — Uploaded to Drive!")
-                except: await safe_edit(caption)
-            else: await safe_edit(caption)
-            # Cleanup
-            if os.path.exists(path): os.remove(path)
-        else:
-            await safe_edit("❌ Drive upload failed.")
-    else:
-        await safe_edit(f"✅ Downloaded! Check `{os.path.basename(path)}` (Drive not configured)")
+                    await safe_edit(f"{batch_prefix}🎬 *{display}*\n\n{txt}")
+                except: pass
 
+        try:
+            if is_audio:
+                result = await download_audio_only(m3u8, display, cb, meta)
+            else:
+                result = await download_hls(m3u8, display, qi, cb, meta)
+        except Exception as e:
+            await safe_edit(f"{batch_prefix}❌ Download error: {str(e)[:200]}")
+            continue
+
+        if not result:
+            await safe_edit(f"{batch_prefix}❌ Download failed.")
+            continue
+
+        path, filename, res, size = result
+        mb = size / 1048576
+        ext = os.path.splitext(path)[1]
+        poster_url = meta.get("poster", "")
+
+        if rclone_is_ready():
+            await safe_edit(f"{batch_prefix}☁️ *Uploading to Google Drive* ({mb:.0f} MB)...")
+            async def gd_progress(pct, speed=""):
+                await safe_edit(f"{batch_prefix}☁️ *Drive Upload*\n\n{progress_bar(pct)}\n💾 *{mb:.0f} MB*{speed}")
+            
+            link = await rclone_upload(path, f"{filename}{ext}", gd_progress)
+            if link:
+                cap_info = f"├ ℹ️ *Info:* {meta.get('info')}\n" if meta.get("info") else ""
+                caption = (
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"   ✅ *UPLOAD COMPLETE*\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"🎬 *{display}*\n\n"
+                    f"{cap_info}"
+                    f"├ 📊 *Quality:* {res}\n"
+                    f"├ 💾 *Size:* {mb:.0f} MB\n"
+                    f"├ 📁 *File:* {filename}{ext}\n"
+                    f"╰ ☁️ *Drive:* [Open Link]({link})\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"_Powered by CineHub_ ⚡")
+                if poster_url:
+                    try:
+                        await q.message.reply_photo(photo=poster_url, caption=caption, parse_mode="Markdown")
+                        await safe_edit(f"✅ *{display}* — Uploaded!")
+                    except: await safe_edit(caption)
+                else: await safe_edit(caption)
+                # Cleanup
+                if os.path.exists(path): os.remove(path)
+            else:
+                await safe_edit(f"{batch_prefix}❌ Drive upload failed.")
+        else:
+            await safe_edit(f"{batch_prefix}✅ Downloaded! Check {os.path.basename(path)}")
+            
+    if total > 1:
+        await c.bot.send_message(chat_id=u.effective_chat.id, text=f"🎉 *Batch Task Complete!*\nSuccessfully processed {total} episodes.", parse_mode="Markdown")
+
+# ---
 
 # --- COOKIE FILE HANDLER ---
 async def handle_document(u: Update, c: ContextTypes.DEFAULT_TYPE):
