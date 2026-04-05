@@ -1,135 +1,124 @@
-# 🎬 Stage Identity Engine
+# 🎬 CineHub — Stage.in Telegram Download Bot
 
-A comprehensive tool for extracting metadata from Stage.in URLs with Telegram bot integration.
+Automated video scraper & downloader for Stage.in, packaged as a Telegram bot.
 
-## 🚀 Features
+## Features
 
-- ✅ **Smart Content Detection**: Automatically detects Movies vs Series
-- ✅ **Complete Metadata Extraction**: Title, description, duration, genre, languages
-- ✅ **Poster Detection**: Extracts both landscape and portrait posters
-- ✅ **Episode Count**: For series content
-- ✅ **Telegram Bot Integration**: `/stage <url>` command
-- ✅ **Multiple Input Methods**: Interactive mode, test suite, and bot mode
-- ✅ **Dual-layer Parsing**: Next.js data + JSON-LD structured data
+- 🔐 Login once via phone + OTP — session persists
+- 📥 Downloads any movie/episode from Stage.in
+- 📊 Quality selection: 4K / 1080p / 720p / 480p / 360p
+- 🔒 Signed HLS token forwarding (bypasses CloudFront auth)
+- 🎵 Auto-merges video + audio with ffmpeg
+- 📤 Uploads small files to Telegram, saves large files to disk
+- 🖥️ VPS-ready — headless Chromium, no GUI needed
 
-## 📋 Requirements
+## Quick Start (Local)
 
 ```bash
+# Install dependencies
 pip install -r requirements.txt
+playwright install chromium
+
+# Set bot token (get from @BotFather on Telegram)
+# Windows:
+set CINEHUB_TOKEN=your_token_here
+# Linux:
+export CINEHUB_TOKEN=your_token_here
+
+# Run
+python cinehub.py
 ```
 
-## 🛠️ Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/PARASGOR905/stage_info.git
-   cd stage_info
-   ```
-
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Set up Telegram bot (optional):
-   - Create a bot with @BotFather on Telegram
-   - Get your BOT_TOKEN
-   - Set environment variable: `TELEGRAM_BOT_TOKEN=your_token_here`
-
-## 🎯 Usage
-
-### Command Line Modes:
+## VPS Deployment (Ubuntu/Debian)
 
 ```bash
-# Test mode - Run predefined tests
-python stage_complete.py test
+# 1. System dependencies
+sudo apt update && sudo apt install -y python3 python3-pip ffmpeg
 
-# Interactive mode - Test URLs manually
-python stage_complete.py interactive
+# 2. Clone/upload files
+mkdir ~/cinehub && cd ~/cinehub
+# Upload cinehub.py and requirements.txt
 
-# Telegram bot mode
-python stage_complete.py bot
+# 3. Install Python deps
+pip3 install -r requirements.txt
+playwright install chromium
+playwright install-deps  # installs system libraries for headless Chrome
 
-# Help information
-python stage_complete.py help
+# 4. Set token
+export CINEHUB_TOKEN="your_bot_token_here"
+
+# 5. Run with screen/tmux (persists after SSH disconnect)
+screen -S cinehub
+python3 cinehub.py
+# Press Ctrl+A, D to detach
 ```
 
-### Telegram Bot Commands:
+### Run as systemd service (auto-start on boot)
 
-- `/start` - Welcome message
-- `/help` - Show help information
-- `/stage <url>` - Extract information from Stage URL
+```bash
+sudo tee /etc/systemd/system/cinehub.service > /dev/null << 'EOF'
+[Unit]
+Description=CineHub Telegram Bot
+After=network.target
 
-### Example Usage:
+[Service]
+Type=simple
+User=your_username
+WorkingDirectory=/home/your_username/cinehub
+Environment=CINEHUB_TOKEN=your_bot_token_here
+ExecStart=/usr/bin/python3 /home/your_username/cinehub/cinehub.py
+Restart=always
+RestartSec=10
 
-```python
-from stage_complete import StageIdentityEngine
+[Install]
+WantedBy=multi-user.target
+EOF
 
-engine = StageIdentityEngine()
-result = engine.get_stage_identity("https://www.stage.in/en/gujarati/movie/nasoor-15995")
-print(result)
+sudo systemctl enable cinehub
+sudo systemctl start cinehub
+sudo systemctl status cinehub  # check status
+sudo journalctl -u cinehub -f  # view logs
 ```
 
-## 📁 File Structure
+## Bot Commands
+
+| Command | Description |
+|---------|-------------|
+| `/start` | Welcome + status |
+| `/login` | Login with phone + OTP |
+| `/login_manual` | Import session from browser |
+| `/downloads` | List downloaded files |
+| `/help` | Usage guide |
+
+## How It Works
+
+1. **Login**: Headless Chromium navigates to Stage.in, handles phone+OTP login, saves cookies to `session.json`
+2. **Scrape**: Opens the watch page with saved session, intercepts the signed `playlist.m3u8` URL from network traffic
+3. **Download**: Parses the HLS manifest, downloads every segment individually with CloudFront auth tokens appended
+4. **Merge**: Uses ffmpeg to combine video + audio into a single MP4
+5. **Deliver**: Uploads to Telegram if <50MB, otherwise saves to `downloads/` folder
+
+## Files
 
 ```
-stage_info/
-├── stage_complete.py     # Main engine with Telegram bot
-├── requirements.txt      # Python dependencies
-├── README.md            # This file
-└── .gitignore          # Git ignore rules
+cinehub.py          # Main bot (all-in-one)
+requirements.txt    # Python dependencies
+session.json        # Saved login session (auto-created)
+downloads/          # Downloaded videos (auto-created)
 ```
 
-## 🎯 Supported Platforms
+## Security
 
-- Stage.in movies and series
-- All language content (Hindi, Gujarati, Haryanvi, etc.)
-- Automatic poster extraction
-- Metadata parsing from multiple sources
+- Set `ALLOWED_USERS` in `cinehub.py` to restrict access to specific Telegram user IDs
+- `session.json` contains your Stage.in login cookies — keep it private
+- The bot runs on your machine/VPS — no data leaves your server
 
-## 🤖 Telegram Bot Setup
+## Troubleshooting
 
-1. Create a new bot with @BotFather
-2. Get your bot token
-3. Run the bot:
-   ```bash
-   python stage_complete.py bot YOUR_BOT_TOKEN
-   ```
-   Or set `TELEGRAM_BOT_TOKEN` environment variable
-
-## 📊 Output Format
-
-```json
-{
-  "stage_id": "15995",
-  "type": "Movie",
-  "title": "Nasoor (Gujarati)",
-  "description": "Harshvardhan, at the peak of his achievements...",
-  "release_date": "2026",
-  "duration": "1h 53m",
-  "genre": null,
-  "languages": "Gujarati",
-  "episode_count": null,
-  "landscape_poster": "https://media.stage.in/...",
-  "portrait_poster": "https://media.stage.in/...",
-  "url": "https://www.stage.in/en/gujarati/movie/nasoor-15995",
-  "success": true
-}
-```
-
-## 🛡️ Error Handling
-
-- Automatic fallback between parsing methods
-- Graceful handling of network errors
-- Validation of input URLs
-- Detailed error messages
-
-## 📝 License
-
-MIT License
-
-## 🙏 Acknowledgments
-
-- Built for Stage.in content extraction
-- Uses advanced web scraping techniques
-- Telegram bot integration powered by python-telegram-bot
+| Issue | Fix |
+|-------|-----|
+| "No session" | Use `/login` to authenticate |
+| "m3u8 not found" | Session expired → `/login` again |
+| Download fails | Token expired mid-download, try again |
+| 403 Forbidden | Signed URL expired — the bot auto-handles this |
+| Bot not responding | Check `CINEHUB_TOKEN` is set correctly |
