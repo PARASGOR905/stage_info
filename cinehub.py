@@ -1022,7 +1022,7 @@ async def login_otp(u: Update, c: ContextTypes.DEFAULT_TYPE):
     state, err = await run_login_otp(otp, prev)
 
     if err:
-        await msg.edit_text(f"❌ Verification failed: {err[:100]}\nTry importing your session cookies manually.")
+        await msg.edit_text("❌ Verification failed. Please try again later or contact support.")
         return ConversationHandler.END
 
     save_session(state, "stage")
