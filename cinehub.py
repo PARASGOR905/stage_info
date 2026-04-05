@@ -1085,8 +1085,8 @@ async def handle_message(u: Update, c: ContextTypes.DEFAULT_TYPE):
     url = text
     name = "video"
     if "/watch/" not in url:
-        url = re.sub(r"/(movie|show|episode)/([^/]+)$", r"/\1/watch/\2", url)
-    m = re.search(r"/watch/([^/?]+)", url)
+        url = re.sub(r"/(movie|show|episode)/(.+)$", r"/\1/watch/\2", url)
+    m = re.search(r"/watch/([^?]+)", url)
     name = re.sub(r"[^\w\-]", "_", m.group(1)) if m else "stage_video"
 
     msg = await u.message.reply_text(f"🎬 *{name}*\n\n🔍 Scraping qualities from *Stage.in*...", parse_mode="Markdown")
