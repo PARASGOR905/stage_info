@@ -284,7 +284,7 @@ async def scrape_stage(url: str) -> tuple[str | None, dict | None, str | None]:
     if not session:
         return None, None, "No session. Use /login or import cookies first."
 
-    BLOCK_TYPES = {"image", "stylesheet", "font", "media"}
+    BLOCK_TYPES = {"image", "stylesheet", "font"}
     master = None
     meta = {"title": "Video", "year": "", "lang": "", "lang_full": "", "poster": "", "description": "", "info": "", "platform": "STAGE"}
 
@@ -310,8 +310,8 @@ async def scrape_stage(url: str) -> tuple[str | None, dict | None, str | None]:
             page.on("request", on_req)
             
             try:
-                await page.goto(url, wait_until="commit", timeout=15_000)
-                for _ in range(100): 
+                await page.goto(url, wait_until="domcontentloaded", timeout=20_000)
+                for _ in range(250): 
                     if master: break
                     await asyncio.sleep(0.1)
             except Exception as e:
@@ -365,7 +365,8 @@ async def scrape_stage(url: str) -> tuple[str | None, dict | None, str | None]:
                     break
 
             try:
-                save_session(await ctx.storage_state(), "stage")
+                if master:
+                    save_session(await ctx.storage_state(), "stage")
             except: pass
             
         finally:
